@@ -3,7 +3,7 @@ import os
 import numpy as np
 import cv2
 import csv
-
+#RUN CET ALGO EN MODE PERFORMANCE ET PARSE EN MULTITHREAD POUR OPTIMISER LE TEMPS D'EXECUTION (- que 7h) i026.jpeg,v019.mp4,84
 from PIL import Image
 # Path to the directory containing JPEG images
 image_dir = r'moodle\data\jpeg'
