@@ -31,12 +31,13 @@ class FrameCollector:
         openedVideo.release()
 
 def main():
-    video_path = f"moodle/data/mp4/v002.mp4"
+    video_dir = f"moodle/data/mp4"
     output_parent_folder = f"moodle/video_frames"
     frame_interval = 30
-    frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)
-
-    frame_collector.sample_frames()
+    for video_name in os.listdir(video_dir):
+        video_path = os.path.join(video_dir, video_name)
+        frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)
+        frame_collector.sample_frames()
 
 if __name__ == "__main__":
     main()
