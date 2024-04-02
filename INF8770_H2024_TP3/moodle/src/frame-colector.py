@@ -1,10 +1,13 @@
+import os
 import cv2
 
 class FrameCollector:
-    def __init__(self, video_path, output_folder, frame_interval=1):
+    def __init__(self, video_path, output_parent_folder, frame_interval=1):
         self.video_path = video_path
-        self.output_folder = output_folder
         self.frame_interval = frame_interval
+        self.video_name = os.path.splitext(os.path.basename(video_path))[0]
+        self.output_folder = f"{output_parent_folder}/{self.video_name}_frames"
+        os.makedirs(self.output_folder, exist_ok=True)
 
     def sample_frames(self):
         openedVideo = cv2.VideoCapture(self.video_path)
@@ -28,10 +31,10 @@ class FrameCollector:
         openedVideo.release()
 
 def main():
-    video_path = r'moodle\data\mp4\v001.mp4'
-    output_folder = f"moodle/video_frames"
+    video_path = f"moodle/data/mp4/v002.mp4"
+    output_parent_folder = f"moodle/video_frames"
     frame_interval = 30
-    frame_collector = FrameCollector(video_path, output_folder, frame_interval)
+    frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)
 
     frame_collector.sample_frames()
 
