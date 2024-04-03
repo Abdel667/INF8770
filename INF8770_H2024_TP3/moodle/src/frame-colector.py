@@ -1,4 +1,5 @@
 import os
+import time
 import cv2
 
 class FrameCollector:
@@ -31,6 +32,7 @@ class FrameCollector:
         openedVideo.release()
 
 def main():
+    start_time = time.time()
     video_dir = f"moodle/data/mp4"
     output_parent_folder = f"moodle/video_frames"
     frame_interval = 30
@@ -38,6 +40,8 @@ def main():
         video_path = os.path.join(video_dir, video_name)
         frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)
         frame_collector.sample_frames()
-
+    end_time = time.time()
+    execution_time = end_time - start_time
+    print(f"Execution time of main function: {execution_time} seconds")
 if __name__ == "__main__":
     main()
