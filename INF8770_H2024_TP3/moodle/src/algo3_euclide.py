@@ -76,6 +76,7 @@ class Algo3Euclide:
     
     #TODO ouvrir le dir des frames et déterminer la frame qui a la plus petite distance euclidienne par rapport à l'image
     def get_closest_frame(self,image_path):# builds the set of euclidian distances
+        isfound = False
         image_hist = self.create_histogram(image_path)
         closest_frame = FrameData("", "", TRESHOLD)
         for video_dir in os.listdir(self.frames_dir):
@@ -89,7 +90,10 @@ class Algo3Euclide:
                     closest_frame.distance = distance
                     closest_frame.video_name = video_dir
                     closest_frame.frame_index = frame
+                    isfound = True
                     #TODO determine a treshold to not consider the frame if the distance is too high
+            if(isfound):
+                break
         return closest_frame
     
     def compare_images(self):
