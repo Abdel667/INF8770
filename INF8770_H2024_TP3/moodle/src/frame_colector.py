@@ -7,8 +7,10 @@ class FrameCollector:
         self.video_path = video_path
         self.frame_interval = frame_interval
         self.video_name = os.path.splitext(os.path.basename(video_path))[0]
-        self.output_folder = f"{output_parent_folder}/{self.video_name}_frames"
+        self.output_folder = f"{output_parent_folder}/{self.video_name}"
         os.makedirs(self.output_folder, exist_ok=True)
+
+    #TODO  Fonction d'Application du découpage par prise de vue pour sélectionner des images clefs pour chaque vidéo(actuellement on prend une chaque N frames)
 
     def sample_frames(self):
         openedVideo = cv2.VideoCapture(self.video_path)
@@ -26,12 +28,12 @@ class FrameCollector:
                 print(f"Error: Could not read frame {frame_index}")
                 continue
             
-            frame_path = f"{self.output_folder}/frame_{frame_index}.jpeg"
+            frame_path = f"{self.output_folder}/{frame_index}.jpeg"
             cv2.imwrite(frame_path, frame)
 
         openedVideo.release()
 
-def main():
+def sample_frames():
     start_time = time.time()
     video_dir = f"moodle/data/mp4"
     output_parent_folder = f"moodle/video_frames"
@@ -42,6 +44,7 @@ def main():
         frame_collector.sample_frames()
     end_time = time.time()
     execution_time = end_time - start_time
-    print(f"Execution time of main function: {execution_time} seconds")
+    print(f"Execution time of frame sampling is : {execution_time} seconds with frame interval of {frame_interval}")
+
 if __name__ == "__main__":
-    main()
+    sample_frames()
