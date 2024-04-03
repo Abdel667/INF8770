@@ -25,13 +25,13 @@ class CompareMethod(Enum):
     CHI2 = "chi2"
 
 class Algo3Euclide:
-    def __init__(self, hist_size:int=4, frame_sampled:bool = True):
+    def __init__(self, hist_size:int=4, frame_sampled:bool = False):
         self.frames_dir = FRAME_DIR
         self.hist_size = hist_size
         self.image_dir = IMAGE_DIR
         self.frame_histograms:dict = {}
-        if not frame_sampled:
-            sample_frames()
+        self.frame_sampled = frame_sampled
+        
     
     # Fonction de Construction des histogrammes de couleurs 1D pour chaque trames (RGB ou YUV)
     #TODO sauvegarde des descripteurs des histogrammes de couleurs 1D afin de les réutiliser pour l'autre hypothèse
@@ -77,6 +77,8 @@ class Algo3Euclide:
     
     #TODO ouvrir le dir des frames et déterminer la frame qui a la plus petite distance euclidienne par rapport à l'image
     def precompute_histograms(self):
+        if not self.frame_sampled:
+            sample_frames()
         for video_dir in os.listdir(self.frames_dir):
             full_video_dir = os.path.join(self.frames_dir, video_dir)
             for frame in os.listdir(full_video_dir):
@@ -94,8 +96,8 @@ class Algo3Euclide:
             distance = self.euclidean_distance(image_hist, frame_hist)
             if distance < closest_frame.distance:
                 closest_frame.distance = distance
-                closest_frame.video_name = os.path.dirname(frame_path)
-                closest_frame.frame_index = os.path.basename(frame_path)
+                closest_frame.video_name = os.path.basename(os.path.dirname(frame_path))
+                closest_frame.frame_index, _ = os.path.splitext(os.path.basename(frame_path))
                 isfound = True
             if(isfound):
                 break

@@ -11,7 +11,7 @@ class FrameCollector:
         os.makedirs(self.output_folder, exist_ok=True)
 
     #TODO  Fonction d'Application du découpage par prise de vue pour sélectionner des images clefs pour chaque vidéo(actuellement on prend une chaque N frames)
-
+    # methode des K moyennes pour déterminer les frames les plus représentatives
     def sample_frames(self):
         openedVideo = cv2.VideoCapture(self.video_path)
         if not openedVideo.isOpened():
@@ -19,7 +19,7 @@ class FrameCollector:
             return
 
         total_frames = int(openedVideo.get(cv2.CAP_PROP_FRAME_COUNT))
-        frame_indices = range(0, total_frames, self.frame_interval)
+        frame_indices = range(10, total_frames, self.frame_interval)
 
         for frame_index in frame_indices:
             openedVideo.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
@@ -37,7 +37,7 @@ def sample_frames():
     start_time = time.time()
     video_dir = f"moodle/data/mp4"
     output_parent_folder = f"moodle/video_frames"
-    frame_interval = 30
+    frame_interval = 60
     for video_name in os.listdir(video_dir):
         video_path = os.path.join(video_dir, video_name)
         frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)
