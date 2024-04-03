@@ -25,7 +25,7 @@ class FrameCollector:
                 print(f"Error: Could not read frame {frame_index}")
                 continue
             
-            frame_path = f"{self.output_folder}/frame_{frame_index}.jpg"
+            frame_path = f"{self.output_folder}/frame_{frame_index}.jpeg"
             cv2.imwrite(frame_path, frame)
 
         openedVideo.release()
