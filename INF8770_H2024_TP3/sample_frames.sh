@@ -1,3 +1,3 @@
 #!/bin/bash
 
-python "moodle/src/frame-colector.py"
+python "moodle/src/frame_colector.py"

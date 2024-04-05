@@ -9,13 +9,14 @@ from frame_colector import sample_frames
 
 IMAGE_DIR = f"moodle/data/jpeg"
 VIDEO_DIR = f"moodle/data/mp4"
-TEST_CSV_PATH = f"moodle/data/test.csv"
+TEST_CSV_PATH = f"moodle/results/test.csv"
 FRAME_DIR = f"moodle/video_frames"
 TRESHOLD = 100000
 
 #Définition de la classe générale et de ses paramètres (notament is_inside)
 class FrameData:
-    def __init__(self, video_name, frame_name, distance):
+    def __init__(self, image_name, video_name, frame_name, distance):
+        self.image_name:str = image_name
         self.video_name:str = video_name
         self.frame_index:str = frame_name
         self.distance:float = distance
@@ -90,7 +91,9 @@ class Algo3Euclide:
     def get_closest_frame(self, image_path):
         isfound = False
         image_hist = self.create_histogram(image_path)
-        closest_frame = FrameData("", "", TRESHOLD)
+        closest_frame = FrameData("","", "", TRESHOLD)
+        closest_frame.image_name,  _ = os.path.splitext(os.path.basename(image_path))
+
         for frame_path, frame_hist in self.frame_histograms.items():
             if(len(frame_hist) != len(image_hist)): continue
             distance = self.euclidean_distance(image_hist, frame_hist)
@@ -113,9 +116,9 @@ class Algo3Euclide:
             with open(TEST_CSV_PATH, 'a', newline='') as file:
                 writer = csv.writer(file)
                 if closest_frame.distance < TRESHOLD:
-                    writer.writerow([image_name, closest_frame.video_name, closest_frame.frame_index])
+                    writer.writerow([closest_frame.image_name , closest_frame.video_name, closest_frame.frame_index])
                 else:
-                    writer.writerow([image_name, 'out', ''])
+                    writer.writerow([closest_frame.image_name, 'out', ''])
             end_time = time.time()
             execution_time = end_time - start_time
             print(f"Execution time for image {image_name} is : {execution_time}")

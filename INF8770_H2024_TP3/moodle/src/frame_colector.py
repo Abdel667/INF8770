@@ -27,8 +27,9 @@ class FrameCollector:
             if not ret:
                 print(f"Error: Could not read frame {frame_index}")
                 continue
+            frame_stamp:float = int(frame_index) /25
             
-            frame_path = f"{self.output_folder}/{frame_index}.jpeg"
+            frame_path = f"{self.output_folder}/{frame_stamp}.jpeg"
             cv2.imwrite(frame_path, frame)
 
         openedVideo.release()
@@ -37,7 +38,7 @@ def sample_frames():
     start_time = time.time()
     video_dir = f"moodle/data/mp4"
     output_parent_folder = f"moodle/video_frames"
-    frame_interval = 60
+    frame_interval = 30
     for video_name in os.listdir(video_dir):
         video_path = os.path.join(video_dir, video_name)
         frame_collector = FrameCollector(video_path, output_parent_folder, frame_interval)

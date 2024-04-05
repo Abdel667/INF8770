@@ -1,1 +1,3 @@
-python evaluate.py --file=../results/test.csv --file_gt=../data/gt.csv
+#!/bin/bash
+
+python moodle/src/evaluate.py --file=moodle/results/test.csv --file_gt=moodle/data/gt.csv
