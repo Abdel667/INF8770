@@ -11,7 +11,7 @@ IMAGE_DIR = f"moodle/data/jpeg"
 VIDEO_DIR = f"moodle/data/mp4"
 TEST_CSV_PATH = f"moodle/results/test.csv"
 FRAME_DIR = f"moodle/video_frames"
-TRESHOLD = 100000
+TRESHOLD = 60000
 
 #Définition de la classe générale et de ses paramètres (notament is_inside)
 class FrameData:
@@ -32,15 +32,11 @@ class Algo3Euclide:
         self.image_dir = IMAGE_DIR
         self.frame_histograms:dict = {}
         self.frame_sampled = frame_sampled
-        
-    
-    # Fonction de Construction des histogrammes de couleurs 1D pour chaque trames (RGB ou YUV)
-    #TODO sauvegarde des descripteurs des histogrammes de couleurs 1D afin de les réutiliser pour l'autre hypothèse
+        self.collector_time:str = ""
+            
     def create_histogram(self, image_path):
-        # Load the image
         image = cv2.imread(image_path)
 
-        # Ensure the image is loaded correctly
         if image is None:
             print("Could not open or find the image")
             exit(0)
@@ -51,12 +47,10 @@ class Algo3Euclide:
         # Split the image into its color channels
         channels = cv2.split(image)
 
-        # Initialize lists to hold the histogram data
         hist_r = []
         hist_g = []
         hist_b = []
 
-        # Calculate histograms for each channel with specified histSize
         for channel in channels:
             hist = cv2.calcHist([channel], [0], None, [self.hist_size], [0, 256])
             if np.array_equal(channel, channels[0]): # Red channel
@@ -66,20 +60,14 @@ class Algo3Euclide:
             else: # Blue channel
                 hist_b = hist.flatten()
 
-        # Print the histograms
-        # print("Red Channel Histogram:", hist_r)
-        # print("Green Channel Histogram:", hist_g)
-        # print("Blue Channel Histogram:", hist_b)
         return np.concatenate((hist_r, hist_g, hist_b))
     
-    # Fonction poour calculer la distance euclidienne entre deux histogrammes pour mesurer leur affinité
     def euclidean_distance(self,hist1, hist2):
         return np.linalg.norm(hist1 - hist2)
     
-    #TODO ouvrir le dir des frames et déterminer la frame qui a la plus petite distance euclidienne par rapport à l'image
     def precompute_histograms(self):
         if not self.frame_sampled:
-            sample_frames()
+            self.collector_time = sample_frames()
         for video_dir in os.listdir(self.frames_dir):
             full_video_dir = os.path.join(self.frames_dir, video_dir)
             for frame in os.listdir(full_video_dir):
@@ -130,6 +118,7 @@ def main():
     algo.compare_images()
     end_time = time.time()
     execution_time = end_time - start_time
+    print(algo.collector_time)
     print(f"Execution time of algo3 with euclide is : {execution_time}")
 
 
