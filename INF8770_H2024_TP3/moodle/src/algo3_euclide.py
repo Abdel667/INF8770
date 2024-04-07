@@ -5,52 +5,40 @@ import os
 import time
 import cv2
 import numpy as np
-from frame_colector import sample_frames
 
 IMAGE_DIR = f"moodle/data/jpeg"
 VIDEO_DIR = f"moodle/data/mp4"
 TEST_CSV_PATH = f"moodle/results/test.csv"
 FRAME_DIR = f"moodle/video_frames"
-TRESHOLD = 60000
+
 
 #Définition de la classe générale et de ses paramètres (notament is_inside)
 class FrameData:
-    def __init__(self, image_name, video_name, frame_name, distance):
-        self.image_name:str = image_name
-        self.video_name:str = video_name
-        self.frame_index:str = frame_name
-        self.distance:float = distance
-
-class CompareMethod(Enum):
-    EUCLIDEAN = "euclidean"
-    CHI2 = "chi2"
+    def __init__(self, video_name, timestamp):
+        self.video:str = video_name
+        self.time:str = timestamp
 
 class Algo3Euclide:
-    def __init__(self, hist_size:int=4, frame_sampled:bool = False):
-        self.frames_dir = FRAME_DIR
+    def __init__(self, hist_size:int=4):
         self.hist_size = hist_size
         self.image_dir = IMAGE_DIR
-        self.frame_histograms:dict = {}
-        self.frame_sampled = frame_sampled
-        self.collector_time:str = ""
+        self.histogram_matrix = []
+        self.index_table = []
+        self.indexation_time = 0
+        self.minimum_treshold = 100000
+        self.high_similarity_treshold = 25000
             
-    def create_histogram(self, image_path):
-        image = cv2.imread(image_path)
-
+    def create_histogram(self, image):
         if image is None:
             print("Could not open or find the image")
             exit(0)
-
         if len(image.shape) == 2: # Grayscale image
             image = cv2.cvtColor(image, cv2.COLOR_GRAY2BGR)
 
-        # Split the image into its color channels
         channels = cv2.split(image)
-
         hist_r = []
         hist_g = []
         hist_b = []
-
         for channel in channels:
             hist = cv2.calcHist([channel], [0], None, [self.hist_size], [0, 256])
             if np.array_equal(channel, channels[0]): # Red channel
@@ -59,54 +47,79 @@ class Algo3Euclide:
                 hist_g = hist.flatten()
             else: # Blue channel
                 hist_b = hist.flatten()
-
         return np.concatenate((hist_r, hist_g, hist_b))
+    
+    def indexation(self):
+        start_time = time.time()
+        for filename in os.listdir(VIDEO_DIR):
+            if filename.endswith(".mp4") or filename.endswith(".avi"): # Add more video formats if needed
+                file_text_name,  _ = os.path.splitext(os.path.basename(filename))
+                video_path = os.path.join(VIDEO_DIR, filename)
+                cap = cv2.VideoCapture(video_path)
+                
+                frame_count = 1
+                while cap.isOpened():
+                    ret, frame = cap.read()
+                    if not ret:
+                        break
+                    
+                    # Extract every 15th frame starting from frame 0
+                    if frame_count % 10 == 1:
+                        # Calculate histogram for the frame
+                        histogram = self.create_histogram(frame)
+                        
+                        # Store the histogram in the matrix
+                        self.histogram_matrix.append(histogram)
+                        
+                        # Store frame specifications in the index table
+                        self.index_table.append(FrameData(file_text_name,cap.get(cv2.CAP_PROP_POS_MSEC) / 1000))
+                    
+                    frame_count += 1
+                
+                cap.release()
+
+        # Convert the list of histograms into a NumPy array for easier manipulation
+        # self.histogram_matrix = np.array(self.histogram_matrix)
+        end_time = time.time()
+        execution_time = end_time - start_time
+        return execution_time
+
     
     def euclidean_distance(self,hist1, hist2):
         return np.linalg.norm(hist1 - hist2)
-    
-    def precompute_histograms(self):
-        if not self.frame_sampled:
-            self.collector_time = sample_frames()
-        for video_dir in os.listdir(self.frames_dir):
-            full_video_dir = os.path.join(self.frames_dir, video_dir)
-            for frame in os.listdir(full_video_dir):
-                frame_path = os.path.join(full_video_dir, frame)
-                frame_hist = self.create_histogram(frame_path)
-                # Store the histogram using the frame path as the key
-                self.frame_histograms[frame_path] = frame_hist
 
     def get_closest_frame(self, image_path):
-        isfound = False
-        image_hist = self.create_histogram(image_path)
-        closest_frame = FrameData("","", "", TRESHOLD)
-        closest_frame.image_name,  _ = os.path.splitext(os.path.basename(image_path))
+        image_hist = self.create_histogram(cv2.imread(image_path))
+        closest_distance = self.minimum_treshold
+        closest_frame = FrameData("", "") 
 
-        for frame_path, frame_hist in self.frame_histograms.items():
+        for i in range(0, len(self.histogram_matrix)):
+            frame_hist = self.histogram_matrix[i]
             if(len(frame_hist) != len(image_hist)): continue
             distance = self.euclidean_distance(image_hist, frame_hist)
-            if distance < closest_frame.distance:
-                closest_frame.distance = distance
-                closest_frame.video_name = os.path.basename(os.path.dirname(frame_path))
-                closest_frame.frame_index, _ = os.path.splitext(os.path.basename(frame_path))
-                isfound = True
-            if(isfound):
-                break
-        return closest_frame
-    
+            if distance < closest_distance:
+                closest_distance = distance
+                closest_frame.video = self.index_table[i].video
+                closest_frame.time = self.index_table[i].time
+                if(closest_distance < self.high_similarity_treshold):
+                    return closest_frame, closest_distance
+
+        return closest_frame, closest_distance
+
     def compare_images(self):
-        self.precompute_histograms()  # Precompute the histograms before comparing images
+        self.indexation_time = self.indexation()
         for image_name in os.listdir(self.image_dir):
             start_time = time.time()
             image_path = os.path.join(self.image_dir, image_name)
-            closest_frame = self.get_closest_frame(image_path)
-            print(f"Closest frame for {image_name} is {closest_frame.video_name}/{closest_frame.frame_index} with a distance of {closest_frame.distance}")
+            image_text_name,  _ = os.path.splitext(os.path.basename(image_path))
+            closest_frame, closest_distance = self.get_closest_frame(image_path)
+            print(f"Closest frame for {image_text_name} is {closest_frame.video}/{closest_frame.time} with a distance of {closest_distance}")
             with open(TEST_CSV_PATH, 'a', newline='') as file:
                 writer = csv.writer(file)
-                if closest_frame.distance < TRESHOLD:
-                    writer.writerow([closest_frame.image_name , closest_frame.video_name, closest_frame.frame_index])
+                if closest_distance < self.minimum_treshold:
+                    writer.writerow([image_text_name , closest_frame.video, closest_frame.time])
                 else:
-                    writer.writerow([closest_frame.image_name, 'out', ''])
+                    writer.writerow([image_text_name, 'out', ''])
             end_time = time.time()
             execution_time = end_time - start_time
             print(f"Execution time for image {image_name} is : {execution_time}")
@@ -118,7 +131,7 @@ def main():
     algo.compare_images()
     end_time = time.time()
     execution_time = end_time - start_time
-    print(algo.collector_time)
+    print(f"Execution time of indexation with histograms is : {algo.indexation_time}")
     print(f"Execution time of algo3 with euclide is : {execution_time}")
 
 
