@@ -26,8 +26,8 @@ class Algo3Chi2:
         self.histogram_matrix = []
         self.index_table = []
         self.indexation_time = 0
-        self.minimum_treshold = 80000
-        self.high_similarity_treshold = 15000
+        self.minimum_treshold = 14000
+        self.high_similarity_treshold = 1000
             
     def create_histogram(self, image):
         if image is None:
