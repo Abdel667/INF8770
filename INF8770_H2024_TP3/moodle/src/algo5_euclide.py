@@ -23,9 +23,12 @@ class FrameData:
 
 class ImageDescriptor:
     def __init__(self):
+        
         self.model = models.resnet50(pretrained=True)
         self.model = torch.nn.Sequential(*(list(self.model.children())[:-1]))
         self.model.eval()
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.model = self.model.to(self.device)
 
         self.preprocess = transforms.Compose([
             transforms.Resize((224, 224)),
@@ -39,6 +42,7 @@ class ImageDescriptor:
         return input_batch
 
     def get_descriptor(self, input_batch):
+        input_batch = input_batch.to(self.device)
         with torch.no_grad():
             output = self.model(input_batch)
             output = rearrange(output, 'b d h w -> (b d h w)')
@@ -50,10 +54,10 @@ class ImageDescriptor:
         plt.show()
 
 
-descriptor = ImageDescriptor()
-image_batch = descriptor.load_image("RGB.jpg")
-output = descriptor.get_descriptor(image_batch)
-descriptor.visualize_descriptor(output)
+# descriptor = ImageDescriptor()
+# image_batch = descriptor.load_image("RGB.jpg")
+# output = descriptor.get_descriptor(image_batch)
+# descriptor.visualize_descriptor(output)
 
 class Algo5Euclide:
     def __init__(self):
@@ -61,8 +65,8 @@ class Algo5Euclide:
         self.descriptor_matrix = []
         self.index_table = []
         self.indexation_time = 0
-        self.minimum_treshold = 100000
-        self.high_similarity_treshold = 25000
+        self.minimum_treshold = 10000
+        # self.high_similarity_treshold = 20
         self.descriptor = ImageDescriptor()
 
     def indexation(self):
@@ -82,8 +86,8 @@ class Algo5Euclide:
                     # Extract every 15th frame starting from frame 0
                     if frame_count % 10 == 1:
                         # Calculate descriptor_vector for the frame
-                        image_batch = descriptor.load_image(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-                        descriptor_vector = descriptor.get_descriptor(image_batch)
+                        image_batch = self.descriptor.load_image(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
+                        descriptor_vector = self.descriptor.get_descriptor(image_batch)
                         
                         # Store the descriptor_vector in the matrix
                         self.descriptor_matrix.append(descriptor_vector)
@@ -101,11 +105,12 @@ class Algo5Euclide:
             execution_time = end_time - start_time
             return execution_time
 
-    def euclidean_distance(self,hist1, hist2):
-        return np.linalg.norm(hist1 - hist2)
+    def euclidean_distance(self,vector1, vector2):
+        return np.linalg.norm(vector1 - vector2)
     
     def get_closest_frame(self, image_path):
-        image_descriptor = descriptor.get_descriptor(Image.open(image_path))
+        image_batch = self.descriptor.load_image(Image.open(image_path))
+        image_descriptor = self.descriptor.get_descriptor(image_batch)
         closest_distance = self.minimum_treshold
         closest_frame = FrameData("", "") 
 
@@ -117,8 +122,8 @@ class Algo5Euclide:
                 closest_distance = distance
                 closest_frame.video = self.index_table[i].video
                 closest_frame.time = self.index_table[i].time
-                if(closest_distance < self.high_similarity_treshold):
-                    return closest_frame, closest_distance
+                # if(closest_distance < self.high_similarity_treshold):
+                #     return closest_frame, closest_distance
 
         return closest_frame, closest_distance
 
@@ -149,3 +154,7 @@ def main():
     execution_time = end_time - start_time
     print(f"Execution time of indexation with neural networks is : {algo.indexation_time}")
     print(f"Execution time of algo3 with euclide is : {execution_time}")
+    print(algo.index_table)
+
+if __name__ == "__main__":
+    main()
