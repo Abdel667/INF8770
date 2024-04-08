@@ -38,8 +38,8 @@ class Algo5Euclide:
         self.descriptor_matrix = []
         self.index_table = []
         self.indexation_time = 0
-        self.minimum_treshold = 45
-        self.high_similarity_treshold = 20
+        self.minimum_treshold = 14000
+        self.high_similarity_treshold = 1000
         self.video_dir = VIDEO_DIR
         self.image_dir = IMAGE_DIR
 
@@ -84,8 +84,10 @@ class Algo5Euclide:
                 end_time = time.time()
         return end_time - start_time
     
-    def euclidean_distance(self,vector1, vector2):
-        return np.linalg.norm(vector1 - vector2)
+    def chi_squared_value(self, hist1, hist2):
+    # Calculate the chi-squared statistic manually
+        chi_squared = 0.5 * np.sum(((hist1 - hist2) ** 2) / (hist1 + hist2 + 1e-6))
+        return chi_squared
     
     def get_closest_frame(self, image_path):
         image_descriptor = self.get_frame_descriptor(cv2.imread(image_path))
@@ -95,7 +97,7 @@ class Algo5Euclide:
         for i in range(0, len(self.descriptor_matrix)):
             frame_hist = self.descriptor_matrix[i]
             if(len(frame_hist) != len(image_descriptor)): continue
-            distance = self.euclidean_distance(image_descriptor, frame_hist)
+            distance = self.chi_squared_value(image_descriptor, frame_hist)
             if distance < closest_distance:
                 closest_distance = distance
                 closest_frame.video = self.index_table[i].video

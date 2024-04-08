@@ -10,7 +10,6 @@ from scipy.stats import chisquare
 IMAGE_DIR = f"moodle/data/jpeg"
 VIDEO_DIR = f"moodle/data/mp4"
 TEST_CSV_PATH = f"moodle/results/test.csv"
-FRAME_DIR = f"moodle/video_frames"
 
 
 #Définition de la classe générale et de ses paramètres (notament is_inside)
