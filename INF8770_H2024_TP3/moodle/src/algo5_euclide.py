@@ -1,116 +1,94 @@
-import time
-import cv2
-import numpy as np
-import torch
-import torchvision.transforms as transforms
-import torchvision.models as models
 import csv
+import time
+import torch
+from torchvision import models, transforms
+import cv2
 import os
-
+import numpy as np
 from PIL import Image
-from einops import rearrange
-from IPython.display import display
-import matplotlib.pyplot as plt
 
 IMAGE_DIR = f"moodle/data/jpeg"
 VIDEO_DIR = f"moodle/data/mp4"
 TEST_CSV_PATH = f"moodle/results/test.csv"
 
+# Check if GPU is available and set the device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Load the pre-trained model
+model = models.resnet18(pretrained=True)
+model.eval() # Set the model to evaluation mode
+
+# Move the model to the device
+model.to(device)
+
+# Define the image transformation
+transform = transforms.Compose([
+    transforms.Resize(224),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
 class FrameData:
     def __init__(self, video_name, timestamp):
-        self.video:str = video_name
-        self.time:str = timestamp
-
-class ImageDescriptor:
-    def __init__(self):
-        
-        self.model = models.resnet50(pretrained=True)
-        self.model = torch.nn.Sequential(*(list(self.model.children())[:-1]))
-        self.model.eval()
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
-
-        self.preprocess = transforms.Compose([
-            transforms.Resize((224, 224)),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ])
-
-    def load_image(self, image:Image):
-        input_tensor = self.preprocess(image)
-        input_batch = input_tensor.unsqueeze(0)
-        return input_batch
-
-    def get_descriptor(self, input_batch):
-        input_batch = input_batch.to(self.device)
-        with torch.no_grad():
-            output = self.model(input_batch)
-            output = rearrange(output, 'b d h w -> (b d h w)')
-            return output
-
-    def visualize_descriptor(self, descriptor):
-        plt.plot(descriptor)
-        plt.title("Descripteur d'une image à l'aide de ResNet-18")
-        plt.show()
-
-
-# descriptor = ImageDescriptor()
-# image_batch = descriptor.load_image("RGB.jpg")
-# output = descriptor.get_descriptor(image_batch)
-# descriptor.visualize_descriptor(output)
+        self.video = video_name
+        self.time = timestamp
 
 class Algo5Euclide:
     def __init__(self):
-        self.image_dir = IMAGE_DIR
         self.descriptor_matrix = []
         self.index_table = []
         self.indexation_time = 0
-        self.minimum_treshold = 10000
-        # self.high_similarity_treshold = 20
-        self.descriptor = ImageDescriptor()
+        self.minimum_treshold = 50
+        self.high_similarity_treshold = 30
+        self.video_dir = VIDEO_DIR
+        self.image_dir = IMAGE_DIR
 
+    def get_frame_descriptor(self, frame):
+        frame_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        
+        frame_tensor = transform(frame_pil).unsqueeze(0)
+        frame_tensor = frame_tensor.to(device)
+    
+        # Get descriptor
+        with torch.no_grad():
+            descriptor = model(frame_tensor)
+            return descriptor.cpu().numpy()
+    
     def indexation(self):
         start_time = time.time()
-        for filename in os.listdir(VIDEO_DIR):
-            if filename.endswith(".mp4") or filename.endswith(".avi"): # Add more video formats if needed
-                file_text_name,  _ = os.path.splitext(os.path.basename(filename))
-                video_path = os.path.join(VIDEO_DIR, filename)
+        for video_file in os.listdir(self.video_dir):
+            if video_file.endswith('.mp4'): # Assuming MP4 videos
+                video_path = os.path.join(self.video_dir, video_file)
+                video_name,  _ = os.path.splitext(os.path.basename(video_file))
                 cap = cv2.VideoCapture(video_path)
                 
-                frame_count = 1
+                frame_count = 0
                 while cap.isOpened():
                     ret, frame = cap.read()
                     if not ret:
                         break
                     
-                    # Extract every 15th frame starting from frame 0
-                    if frame_count % 10 == 1:
-                        # Calculate descriptor_vector for the frame
-                        image_batch = self.descriptor.load_image(Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)))
-                        descriptor_vector = self.descriptor.get_descriptor(image_batch)
+                    # Extract every 15th frame
+                    if frame_count % 15 == 1:
+                        descriptor = self.get_frame_descriptor(frame)
+                        self.descriptor_matrix.append(descriptor)
                         
-                        # Store the descriptor_vector in the matrix
-                        self.descriptor_matrix.append(descriptor_vector)
-                        
-                        # Store frame specifications in the index table
-                        self.index_table.append(FrameData(file_text_name,cap.get(cv2.CAP_PROP_POS_MSEC) / 1000))
+                        # Store FrameData in index table
+                        timestamp = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000 # Convert to seconds
+                        frame_data = FrameData(video_name, timestamp)
+                        self.index_table.append(frame_data)
                     
                     frame_count += 1
                 
                 cap.release()
-
-            # Convert the list of descriptor_vectors into a NumPy array for easier manipulation
-            # self.descriptor_matrix = np.array(self.descriptor_matrix)
-            end_time = time.time()
-            execution_time = end_time - start_time
-            return execution_time
-
+                end_time = time.time()
+        return end_time - start_time
+    
     def euclidean_distance(self,vector1, vector2):
         return np.linalg.norm(vector1 - vector2)
     
     def get_closest_frame(self, image_path):
-        image_batch = self.descriptor.load_image(Image.open(image_path))
-        image_descriptor = self.descriptor.get_descriptor(image_batch)
+        image_descriptor = self.get_frame_descriptor(cv2.imread(image_path))
         closest_distance = self.minimum_treshold
         closest_frame = FrameData("", "") 
 
@@ -122,8 +100,8 @@ class Algo5Euclide:
                 closest_distance = distance
                 closest_frame.video = self.index_table[i].video
                 closest_frame.time = self.index_table[i].time
-                # if(closest_distance < self.high_similarity_treshold):
-                #     return closest_frame, closest_distance
+                if(closest_distance < self.high_similarity_treshold):
+                    return closest_frame, closest_distance
 
         return closest_frame, closest_distance
 
@@ -154,7 +132,6 @@ def main():
     execution_time = end_time - start_time
     print(f"Execution time of indexation with neural networks is : {algo.indexation_time}")
     print(f"Execution time of algo3 with euclide is : {execution_time}")
-    print(algo.index_table)
 
 if __name__ == "__main__":
     main()
